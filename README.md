@@ -6,5 +6,6 @@ linux下c++轻量级Web服务器
 * 实现**同步/异步日志系统**，记录服务器运行状态
 * 经Webbench压力测试可以实现**上万的并发连接**数据交换
 
-
-[参考项目](https://github.com/qinguoyi/TinyWebServer#%E6%A6%82%E8%BF%B0)
+----------
+项目参考\
+Linux高性能服务器编程，游双著.
