@@ -9,29 +9,12 @@
 class sem
 {
 public:
-    sem()
-    {
-        if(sem_init(&m_sem, 0, 0) != 0)
-            throw std::exception();
-    }
-    sem(int num)
-    {
-        if(sem_init(&m_sem, 0, num) != 0)
-            throw std::exception();
-    }
-    ~sem()
-    {
-        sem_destroy(&m_sem);
-    }
+    sem();
+    sem(int num);
+    ~sem();
 
-    bool wait()     // 信号量-1
-    {
-        return sem_wait(&m_sem) == 0; 
-    }
-    bool post()     // 信号量+1
-    {
-        return sem_post(&m_sem) == 0;
-    }
+    bool wait();    // 信号量-1
+    bool post();    // 信号量+1
 
 private:
     sem_t m_sem;
@@ -42,28 +25,12 @@ private:
 class locker
 {
 public:
-    locker()
-    {
-        if(pthread_mutex_init(&m_mutex, NULL) != 0)
-            throw std::exception();
-    }
-    ~locker()
-    {
-        pthread_mutex_destroy(&m_mutex);
-    }
+    locker();
+    ~locker();
 
-    bool lock()
-    {
-        return pthread_mutex_lock(&m_mutex) == 0;
-    }
-    bool unlock()
-    {
-        return pthread_mutex_unlock(&m_mutex) == 0;
-    }
-    pthread_mutex_t *get()  // 获取互斥锁变量的地址，从而操作锁本体
-    {
-        return &m_mutex;
-    }
+    bool lock();
+    bool unlock();
+    pthread_mutex_t *get();  // 获取互斥锁变量的地址，从而操作锁本体
 
 private:
     pthread_mutex_t m_mutex;
@@ -74,42 +41,13 @@ private:
 class cond
 {
 public:
-    cond()
-    {
-        if(pthread_cond_init(&m_cond, NULL) != 0){
-            //pthread_mutex_destroy(&m_mutex); 
-            throw std::exception();
-        }
-    }
-    ~cond()
-    {
-        pthread_cond_destroy(&m_cond);
-    }
+    cond();
+    ~cond();
 
-    bool wait(pthread_mutex_t *m_mutex)
-    {
-        int ret = 0;
-        //pthread_mutex_lock(&m_mutex);      // 条件变量改变时需要加上互斥锁，保证原子操作
-        ret = pthread_cond_wait(&m_cond, m_mutex);
-        //pthread_mutex_unlock(&m_mutex);
-        return ret == 0;
-    }
-    bool timewait(pthread_mutex_t *m_mutex, struct timespec t)
-    {
-        int ret = 0;
-        //pthread_mutex_lock(&m_mutex);
-        ret = pthread_cond_timedwait(&m_cond, m_mutex, &t);
-        //pthread_mutex_unlock(&m_mutex);
-        return ret == 0;
-    }
-    bool signal()
-    {
-        return pthread_cond_signal(&m_cond) == 0;
-    }
-    bool broadcast()
-    {
-        return pthread_cond_broadcast(&m_cond) == 0;
-    }
+    bool wait(pthread_mutex_t *m_mutex);
+    bool timewait(pthread_mutex_t *m_mutex, struct timespec t);
+    bool signal();      // 唤醒一个线程（阻塞队列顺序唤醒）
+    bool broadcast();   // 唤醒所有被阻塞的线程
 
 private:
     //static pthread_mutex_t m_mutex;
