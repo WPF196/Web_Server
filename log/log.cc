@@ -57,6 +57,7 @@ bool Log::init(const char* file_name, int close_log, int log_buf_size,
     const char* p = strrchr(file_name, '/');    // 返回file_name最后出现'/'的位置
     char log_full_name[256] = {0};
 
+    // 给文件命名（即创建文件）
     if (p == NULL){
         snprintf(log_full_name, 255, "%d_%02d_%02d_%s", 
                 my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday, file_name);
@@ -134,6 +135,7 @@ void Log::write_log(int level, const char* format, ...)
     }
     m_mutex.unlock();
 
+    // 不定参数
     va_list valst;
     va_start(valst, format);
 
@@ -144,6 +146,7 @@ void Log::write_log(int level, const char* format, ...)
                      my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday,
                      my_tm.tm_hour, my_tm.tm_min, my_tm.tm_sec, now.tv_usec, s);
     
+    // 将可变参数全部写到 m_buf 尾部
     int m = vsnprintf(m_buf + n, m_log_buf_size - n - 1, format, valst);
     m_buf[n + m] = '\n';
     m_buf[n + m + 1] = '\0';
@@ -160,7 +163,7 @@ void Log::write_log(int level, const char* format, ...)
         m_mutex.unlock();
     }
 
-    va_end(valst);
+    va_end(valst);      
 }
 
 void Log::flush(void)
