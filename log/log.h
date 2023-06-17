@@ -44,5 +44,4 @@ private:
     int m_close_log;        // 关闭日志
 };
 
-
 #endif
