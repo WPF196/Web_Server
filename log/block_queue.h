@@ -20,7 +20,7 @@ template <class T>
 class block_queue
 {
 public:
-    block_queue(int max_size = 1000);
+    block_queue(int max_size = 1000);   // 默认消息队列长为1000
     ~block_queue();
 
     void clear();           // 清空
@@ -28,8 +28,8 @@ public:
     bool empty();           // 判空
     bool front(T& value);   // 获取队首元素，存于value
     bool back(T& value);    // 获取队尾元素，存于value
-    int size();             
-    int max_size();
+    int size();             // 获取size 
+    int max_size();         // 获取max_size
      
     /* 往队列添加元素，需要将所有使用队列的线程先唤醒
      * 当有元素push进队列,相当于生产者生产了一个元素

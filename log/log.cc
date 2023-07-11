@@ -11,7 +11,7 @@ using namespace std;
 Log::Log()
 {
     m_count = 0;
-    m_is_async = false;
+    m_is_async = false;     // 默认同步
 }
 
 Log::~Log()
@@ -137,7 +137,7 @@ void Log::write_log(int level, const char* format, ...)
 
     // 不定参数
     va_list valst;
-    va_start(valst, format);
+    va_start(valst, format);    // 指向可变参数列表
 
     string log_str;
     m_mutex.lock();
@@ -146,7 +146,7 @@ void Log::write_log(int level, const char* format, ...)
                      my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday,
                      my_tm.tm_hour, my_tm.tm_min, my_tm.tm_sec, now.tv_usec, s);
     
-    // 将可变参数全部写到 m_buf 尾部
+    // 按照 format 格式，将内容写到 m_buf 尾部，并将占位符置换为可变参数 valst
     int m = vsnprintf(m_buf + n, m_log_buf_size - n - 1, format, valst);
     m_buf[n + m] = '\n';
     m_buf[n + m + 1] = '\0';
@@ -157,7 +157,7 @@ void Log::write_log(int level, const char* format, ...)
     if (m_is_async && !m_log_queue->full()){
         m_log_queue->push(log_str);
     }
-    else{
+    else{   // 同步 || 队列已满，则直接写，不用入队
         m_mutex.lock();
         fputs(log_str.c_str(), m_fp);
         m_mutex.unlock();
