@@ -19,7 +19,7 @@
 实现思路：私有化它的构造函数，以防止外界创建单例类的对象；使用类的私有静态指针变量指向类的唯一实例，并用一个公有的静态方法获取该实例。
 
 =========================================================================
-#### 1. 懒汉模式（双检测）
+#### 1. 懒汉模式（双检测，用时创建）
 ```
 class single{
  private:
@@ -46,7 +46,7 @@ single* single::p = NULL;
 single* single::getinstance(){
     if (NULL == p){           // 检测1
         pthread_mutex_lock(&lock);  // 检测2
-        if (NULL == p){
+        if (NULL == p){             // 用时创建对象
             p = new single;
         }
         pthread_mutex_unlock(&lock);
@@ -74,8 +74,8 @@ public:
     static single* getinstance();
 
 };
-single* single::p = new single();
-single* single::getinstance(){
+single* single::p = new single();   // 直接创建对象
+single* single::getinstance(){      // 返回所创建的对象
     return p;
 }
 ```
