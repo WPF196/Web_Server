@@ -44,7 +44,7 @@ bool Log::init(const char* file_name, int close_log, int log_buf_size,
         pthread_create(&tid, NULL, flush_log_thread, NULL);
     }
 
-    m_close_log = close_log;                
+    m_close_log = close_log;
     m_log_buf_size = log_buf_size;
     m_buf = new char[m_log_buf_size];
     memset(m_buf, '\0', m_log_buf_size);
@@ -58,10 +58,10 @@ bool Log::init(const char* file_name, int close_log, int log_buf_size,
     char log_full_name[256] = {0};
 
     // 给文件命名（即创建文件）
-    if (p == NULL){
+    if (p == NULL){     // 说明最后以'/'结尾，即路径是个目录，新文件名=时间
         snprintf(log_full_name, 255, "%d_%02d_%02d_%s", 
                 my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday, file_name);
-    }else{
+    }else{      // 说明是个具体文件，新文件名=传入文件名+时间
         strcpy(log_name, p + 1);
         strncpy(dir_name, file_name, p - file_name + 1);
         snprintf(log_full_name, 255, "%s%d_%02d_%02d_%s", dir_name, 
@@ -81,10 +81,10 @@ bool Log::init(const char* file_name, int close_log, int log_buf_size,
 void Log::write_log(int level, const char* format, ...)
 {
     struct timeval now = {0, 0};
-    gettimeofday(&now, NULL);       // 获取精确时间
-    time_t t = now.tv_sec;
-    struct tm* sys_tm = localtime(&t);
-    struct tm my_tm = *sys_tm;
+    gettimeofday(&now, NULL);       // 获取精确时间，精确到微秒
+    time_t t = now.tv_sec;          // 获取s，通过s转换得到具体时间
+    struct tm* sys_tm = localtime(&t);  // 强制类型转换，返回tm*
+    struct tm my_tm = *sys_tm;      // 解引用，获取当前时间
     char s[16] = {0};               // 存储日志等级
 
     // 日志等级 debug -> info -> warn -> error，默认info
@@ -154,6 +154,7 @@ void Log::write_log(int level, const char* format, ...)
 
     m_mutex.unlock();
 
+    // 如果是异步 且 队列未满，将任务加入阻塞队列
     if (m_is_async && !m_log_queue->full()){
         m_log_queue->push(log_str);
     }
@@ -169,7 +170,7 @@ void Log::write_log(int level, const char* format, ...)
 void Log::flush(void)
 {
     m_mutex.lock();
-    fflush(m_fp);
+    fflush(m_fp);       // 将内容从 buf 冲到 m_fp 中
     m_mutex.unlock();
 }
 
