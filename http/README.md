@@ -19,7 +19,7 @@ http连接处理类
 >* 调用get_line函数，通过m_start_line将从状态机读取数据间接赋给text
 >* 主状态机解析text
 
-#### [状态机详解](https://blog.csdn.net/qq_34039018/article/details/103603932)
+### [状态机详解](https://blog.csdn.net/qq_34039018/article/details/103603932)
 
 ---------------------------------------
 ### http报文
