@@ -37,12 +37,12 @@ public:
     enum METHOD{ GET = 0, POST, HEAD, PUT, DELETE, TRACE, OPTIONS, CONNECT, PATH };
     // 报文解析的结果
     enum HTTP_CODE{
-        NO_REQUEST,             // 请求不完整
-        GET_REQUEST,            // 获取了完整的HTTP请求
-        BAD_REQUEST,            // HTTP请求报文有语法错误
-        NO_RESOURCE,            
-        FORBIDDEN_REQUEST,
-        FILE_REQUEST,
+        NO_REQUEST,             // 请求不完整，需要继续读取请求报文数据（跳转主线程继续监测读事件）
+        GET_REQUEST,            // 获取了完整的HTTP请求（调用do_request完成请求资源映射）
+        BAD_REQUEST,            // HTTP请求报文有语法错误或请求资源为目录（跳转process_write完成响应报文）
+        NO_RESOURCE,            // 请求资源不存在（跳转process_write完成响应报文）
+        FORBIDDEN_REQUEST,      // 请求资源禁止访问，没有读取权限（跳转process_write完成响应报文）
+        FILE_REQUEST,           // 请求资源可以正常访问（跳转process_write完成响应报文）
         INTERNAL_ERROR,         // 服务器内部错误
         CLOSED_CONNECTION
     };
@@ -92,20 +92,21 @@ private:
     HTTP_CODE do_request();
 
     // 用于将指针向后偏移，指向未处理的字符
-    char *get_line() { return m_read_buf + m_start_line; }; // m_start_line是已经解析的字符
+    char *get_line() { return m_read_buf + m_start_line; }; 
     // 验证是否能完整解析后续的一行，返回从状态机
     LINE_STATUS parse_line();
+    // 解除m_file_address的映射关系
     void unmap();
 
     // 根据响应报文格式，生成对应8个部分，以下函数均由do_request调用
     bool add_response(const char *format, ...);
-    bool add_content(const char *content);
+    bool add_content(const char *content);  // 添加文本content
     bool add_status_line(int status, const char *title);
     bool add_headers(int content_length);
-    bool add_content_type();
+    bool add_content_type();    // 添加文本类型
     bool add_content_length(int content_length);
-    bool add_linger();
-    bool add_blank_line();
+    bool add_linger();      // 添加连接状态，通知浏览器端是保持连接还是关闭
+    bool add_blank_line();  // 添加空行
 
 public:
     static int m_epollfd;
@@ -136,19 +137,19 @@ private:
     bool m_linger;              // 是否开启keep_alive，如果开启 keep-alive，
                                 // 则服务端在返回 response 后不关闭 TCP 连接
 
-    char *m_file_address;       // 读取服务器上的文件地址
+    char *m_file_address;       // 读取服务器上的文件地址（mmap映射）
     struct stat m_file_stat;
-    struct iovec m_iv[2];       // io向量机制iovec
-    int m_iv_count;
-    int cgi;            // 是否启用的POST
+    struct iovec m_iv[2];       // io向量机制iovec（iov_base指向数据地址，iov_len表示数据长度）
+    int m_iv_count;             // iovec结构体个数
+    int cgi;            // 是否启用的POST（1为POST）
     char *m_string;     // 存储请求头数据
     int bytes_to_send;  // 剩余发送字节数
     int bytes_have_send;// 已发送字节数
-    char *doc_root;
+    char *doc_root;     // 网站根目录
 
     map<string, string> m_users;
     int m_TRIGMode;     // 触发模式（0水平、1边沿）
-    int m_close_log;
+    int m_close_log;    // 日志开关
 
     char sql_user[100];
     char sql_passwd[100];
