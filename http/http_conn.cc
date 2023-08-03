@@ -37,7 +37,7 @@ void http_conn::initmysql_result(connection_pool *connPool)
     // 返回所有字段结构的数组
     MYSQL_FIELD *fields = mysql_fetch_fields(result);
 
-    // 从结果集中获取下一行，将对应的用户名和密码，存入map中
+    // 从结果集中取出所有结果，将对应的用户名和密码，存入map中
     while(MYSQL_ROW row = mysql_fetch_row(result)){
         string temp1(row[0]);
         string temp2(row[1]);
@@ -54,7 +54,7 @@ int setnonblocking(int fd)
     return old_option;
 }
 
-// 将内核事件表注册读事件（ET模式，选择开启EPOLLONESHOT（防止多线程处理一个文件描述符））
+// 将内核事件表注册读事件（选择开启EPOLLONESHOT（防止多线程处理一个文件描述符））
 void addfd(int epollfd, int fd, bool one_shot, int TRIGMode)
 {
     epoll_event event;
@@ -78,7 +78,7 @@ void removefd(int epollfd, int fd)
     close(fd);
 }
 
-// 将事件重置为EPOLLONESHOT
+// 将事件重置为EPOLLONESHOT（ev 事件类型）
 void modfd(int epollfd, int fd, int ev, int TRIGMode)
 {
     epoll_event event;
@@ -130,8 +130,7 @@ void http_conn::init(int sockfd, const sockaddr_in &addr, char *root, int TRIGMo
     init();
 }
 
-// 初始化新接收的连接
-// check_state默认为分析请求行状态
+// 初始化新接收的连接（check_state默认为分析请求行状态）
 void http_conn::init()
 {
     mysql = NULL;
@@ -158,7 +157,7 @@ void http_conn::init()
     memset(m_real_file, '\0', FILENAME_LEN);
 }
 
-// 验证是否能完整解析后续的一行（只验证，不解析）
+// 返回值为行的读取状态（只做状态判断，不进行解析）
 http_conn::LINE_STATUS http_conn::parse_line()
 {
     char temp;
@@ -233,7 +232,7 @@ bool http_conn::read_once()
 // 解析http请求行，获得请求方法，目标url及http版本号 （报文格式看readme）
 http_conn::HTTP_CODE http_conn::parse_request_line(char *text)
 {
-    // 返回text中第一个 和 字符串" \t"有相同字符匹配的地方
+    // 返回text中第一个和字符串" \t"有相同字符匹配的地方
     m_url = strpbrk(text, " \t");   // 返回除HTTP协议版本之后的部分
     if(!m_url)
         return BAD_REQUEST;
@@ -257,14 +256,17 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char *text)
     m_version += strspn(m_version, " \t");    // 解析出HTTP版本
     if(strcasecmp(m_version, "HTTP/1.1") != 0)  return BAD_REQUEST;
     
+    // url是http请求
     if(strncasecmp(m_url, "http://", 7) == 0){
         m_url += 7;
         m_url = strchr(m_url, '/');
     }
+    // url是https请求
     if(strncasecmp(m_url, "https://", 8) == 0){
         m_url += 8;
         m_url = strchr(m_url, '/');
     }
+    // 没有url或者url不是 /
     if(!m_url || m_url[0] != '/')   
         return BAD_REQUEST;
     // 当url为/时，显示欢迎界面
@@ -279,6 +281,7 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char *text)
 // 解析http请求的一个头部信息
 http_conn::HTTP_CODE http_conn::parse_headers(char* text)
 {       
+    // 解析到了空行
     if(text[0] == '\0'){    
         if(m_content_length != 0){     // 说明有消息体，是POST
             m_check_state = CHECK_STATE_CONTENT;    // 标记解析消息体
@@ -287,17 +290,20 @@ http_conn::HTTP_CODE http_conn::parse_headers(char* text)
         // 解析完了
         return GET_REQUEST;
     }
+    // 解析到了Connection
     else if(strncasecmp(text, "Connection:", 11) == 0){
         text += 11;
         text += strspn(text, " \t");
         if(strcasecmp(text, "keep-alive") == 0)
             m_linger = true;
     }
+    // 解析到了Content-length
     else if(strncasecmp(text, "Content-length:", 15) == 0){
         text += 15;
         text += strspn(text, " \t");
         m_content_length = atol(text);
     }
+    // 解析到了Host
     else if(strncasecmp(text, "Host:", 5) == 0){
         text += 5;
         text += strspn(text, " \t");
@@ -311,7 +317,7 @@ http_conn::HTTP_CODE http_conn::parse_headers(char* text)
 // 判断http请求是否被完整读入
 http_conn::HTTP_CODE http_conn::parse_content(char *text)
 {   
-    // 判断buffer中是否读取了消息体（即消息头是否读完）
+    // 判断buffer是否读到了消息头（即已经读完了请求行和请求头）
     if(m_read_idx >= (m_content_length + m_checked_idx)){
         text[m_content_length] = '\0';
         // POST请求中最后为输入的用户名和密码
@@ -513,6 +519,7 @@ void http_conn::unmap()
 bool http_conn::write()
 {
     int temp = 0;
+    // 报文响应为空，一般不会出现此情况
     if(bytes_to_send == 0){
         modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
         init();
@@ -520,11 +527,13 @@ bool http_conn::write()
     }
 
     while(1){
-        // 将响应报文的状态行、消息头、空行和响应正文发送给浏览器端
+        // 将 m_iv_count 个非连续缓冲区 m_iv 中的内容写到 m_sockfd
         temp = writev(m_sockfd, m_iv, m_iv_count);
+
+        // 写入失败
         if(temp < 0){
             if(errno == EAGAIN){   // 缓冲区满了
-                modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
+                modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);   // 此文件描述符仍然可写
                 return true;
             }
             unmap();
@@ -664,4 +673,17 @@ bool http_conn::process_write(HTTP_CODE ret)
     m_iv_count = 1;
     bytes_to_send = m_write_idx;
     return true;
+}
+
+void http_conn::process()
+{
+    HTTP_CODE read_ret = process_read();
+    if(read_ret == NO_REQUEST){
+        modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
+        return;
+    }
+    bool write_ret = process_write(read_ret);
+    if(!write_ret)
+        close_conn();
+    modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
 }

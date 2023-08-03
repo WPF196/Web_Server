@@ -24,7 +24,7 @@
 
 #include "../lock/locker.h"
 #include "../CGImysql/sql_connection_pool.h"
-#include "../timer/lst_timer.h"
+//#include "../timer/lst_timer.h"
 #include "../log/log.h"
 
 class http_conn
@@ -78,25 +78,17 @@ public:
 
 private:
     void init();
-    // 从m_read_buf读取，并处理请求报文
-    HTTP_CODE process_read();
-    // 向m_write_buf写入响应报文数据
-    bool process_write(HTTP_CODE ret);
-    // 解析报文中的请求行数据（返回主状态机）
-    HTTP_CODE parse_request_line(char *test);
-    // 解析报文中的请求头数据（返回主状态机）
-    HTTP_CODE parse_headers(char *test);
-    // 解析报文中的请求内容（返回主状态机）
-    HTTP_CODE parse_content(char *test);
-    // 生成响应报文
-    HTTP_CODE do_request();
+    HTTP_CODE process_read();                 // 从m_read_buf读取，并处理请求报文
+    bool process_write(HTTP_CODE ret);        // 向m_write_buf写入响应报文数据
+    HTTP_CODE parse_request_line(char *test); // 解析报文中的请求行数据（返回主状态机）
+    HTTP_CODE parse_headers(char *test);      // 解析报文中的请求头数据（返回主状态机）
+    HTTP_CODE parse_content(char *test);      // 解析报文中的请求内容（返回主状态机）
+    HTTP_CODE do_request();                   // 生成响应报文
 
     // 用于将指针向后偏移，指向未处理的字符
-    char *get_line() { return m_read_buf + m_start_line; }; 
-    // 验证是否能完整解析后续的一行，返回从状态机
-    LINE_STATUS parse_line();
-    // 解除m_file_address的映射关系
-    void unmap();
+    char *get_line() { return m_read_buf + m_start_line; }
+    LINE_STATUS parse_line();   // 返回值为行的读取状态（从状态机）
+    void unmap();       // 解除m_file_address的映射关系
 
     // 根据响应报文格式，生成对应8个部分，以下函数均由do_request调用
     bool add_response(const char *format, ...);
@@ -109,8 +101,8 @@ private:
     bool add_blank_line();  // 添加空行
 
 public:
-    static int m_epollfd;
-    static int m_user_count;
+    static int m_epollfd;       // epoll实例
+    static int m_user_count;    // 用户数量
     MYSQL *mysql;
     int m_state;  // 读为0, 写为1
 
@@ -118,9 +110,9 @@ private:
     int m_sockfd;
     sockaddr_in m_address;
     char m_read_buf[READ_BUFFER_SIZE];  // 存储读取的请求报文数据
-    long m_read_idx;            // 缓冲区中m_read_buf中数据的最后一个字节的下一个位置
-    long m_checked_idx;         // m_read_buf读取的位置m_checked_idx
-    int m_start_line;           // m_read_buf中已经解析的字符个数
+    long m_read_idx;            // 缓冲区m_read_buf数据的最后一个字节的下一个位置（即m_read_buf元素数量）
+    long m_checked_idx;         // m_read_buf 读取的位置 m_checked_idx
+    int m_start_line;           // m_read_buf 中已经解析的字符个数
 
     char m_write_buf[WRITE_BUFFER_SIZE];// 存储发出的响应报文数据   
     int m_write_idx;            // 指示buffer中的长度
@@ -134,8 +126,7 @@ private:
     char *m_version;
     char *m_host;
     long m_content_length;
-    bool m_linger;              // 是否开启keep_alive，如果开启 keep-alive，
-                                // 则服务端在返回 response 后不关闭 TCP 连接
+    bool m_linger;  // 是否开启keep_alive（如果开启keep-alive，则服务端在返回response后不关闭TCP连接）
 
     char *m_file_address;       // 读取服务器上的文件地址（mmap映射）
     struct stat m_file_stat;
