@@ -1,4 +1,5 @@
 #include "lst_timer.h"
+#include "../http/http_conn.h"
 
 sort_timer_lst::sort_timer_lst()
 {
@@ -96,9 +97,11 @@ void sort_timer_lst::tick()
     while(tmp){
         if(cur < tmp->expire)
             break;
+        
         // 以下处理超出超时时长的情况
-        tmp->cb_func(tmp->user_data);   // 调用回调函数，执行定时时间
+        tmp->cb_func(tmp->user_data);   // 调用回调函数，将超时的文件描述符移除
         head = tmp->next;               // 处理过的定时器从链表中移除，并更新表头
+        
         if(head)
             head->prev = NULL;
         delete tmp;
@@ -203,3 +206,14 @@ void Utils::show_error(int connfd, const char *info)
 
 int *Utils::u_pipefd = 0;
 int Utils::u_epollfd = 0;
+
+class Utils;
+void cb_func(client_data *user_data)
+{
+    // 删除非活动连接在socket上的注册事件
+    epoll_ctl(Utils::u_epollfd, EPOLL_CTL_DEL, user_data->sockfd, 0);
+    assert(user_data);
+    // 删除非活动连接在socket上的注册事件
+    close(user_data->sockfd);
+    http_conn::m_user_count--;  // 减少连接数
+}

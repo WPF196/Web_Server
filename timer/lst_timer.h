@@ -74,7 +74,6 @@ private:
     util_timer *tail;       // 链表尾
 };
 
-// 
 class Utils
 {
 public:
@@ -95,11 +94,13 @@ public:
     void show_error(int connfd, const char *info);
 
 public:
-    static int *u_pipefd;
+    static int *u_pipefd;           // 管道id
     sort_timer_lst m_timer_lst;     // 定时器链表
-    static int u_epollfd;
-    int m_TIMESLOT;
+    static int u_epollfd;           // epollfd
+    int m_TIMESLOT;                 // 最小时间间隙
 };
 
+// 定时器回调函数：从内核事件表删除事件，关闭文件描述符，释放连接资源
+void cb_func(client_data *user_data);
 
 #endif
