@@ -24,7 +24,7 @@
 
 #include "../lock/locker.h"
 #include "../CGImysql/sql_connection_pool.h"
-//#include "../timer/lst_timer.h"
+#include "../timer/lst_timer.h"
 #include "../log/log.h"
 
 class http_conn
@@ -73,8 +73,8 @@ public:
     bool write();       // 响应报文写入函数
     sockaddr_in *get_address(){ return &m_address; }
     void initmysql_result(connection_pool *connPool);  // 同步线程初始化数据库读取表
-    int timer_flag;
-    int improv;
+    int timer_flag;     // 是否关闭连接
+    int improv;         // 是否正在处理数据中
 
 private:
     void init();
@@ -104,7 +104,7 @@ public:
     static int m_epollfd;       // epoll实例
     static int m_user_count;    // 用户数量
     MYSQL *mysql;
-    int m_state;  // 读为0, 写为1
+    int m_state;  // IO事件：读为0, 写为1
 
 private:
     int m_sockfd;
