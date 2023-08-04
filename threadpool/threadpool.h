@@ -18,7 +18,7 @@ public:
     threadpool(int actor_model, connection_pool* connPool, 
                 int thread_number = 8, int max_request = 10000);
     ~threadpool();
-    bool append(T* request, int state);  // 请求队列中插入任务请求
+    bool append(T* request, int state);  // 请求队列中插入任务请求(http_conn)
     bool append_p(T* request);
 
 private:
@@ -29,12 +29,14 @@ private:
 private:
     int m_thread_number;            // 线程池中的线程数量
     int m_max_requests;             // 请求队列中允许的最大请求数
+
     pthread_t* m_threads;           // 描述线程池的数组，其大小为 m_thread_number
     std::list<T*> m_workqueue;      // 请求队列
+    
     locker m_queuelocker;           // 保护请求队列的互斥锁
     sem m_queuestat;                // 是否有任务需要处理
     connection_pool* m_connPool;    // 数据库
-    int m_actor_model;              // 模型切换
+    int m_actor_model;              // 模型切换（指Reactor/Proactor）
 };
 
 #endif
