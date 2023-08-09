@@ -73,7 +73,7 @@ public:
     bool write();       // 响应报文写入函数
     sockaddr_in *get_address(){ return &m_address; }
     void initmysql_result(connection_pool *connPool);  // 同步线程初始化数据库读取表
-    int timer_flag;     // 是否关闭连接
+    int timer_flag;     // 是否关闭连接，1
     int improv;         // 是否正在处理数据中
 
 private:

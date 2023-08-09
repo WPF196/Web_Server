@@ -87,10 +87,11 @@ public:
     void addfd(int epollfd, int fd, bool one_shot, int TRIGMode);
     // 信号处理函数
     static void sig_handler(int sig);
-    // 设置信号函数
+    // 设置信号函数，默认被信号打断的系统调用自动重启
     void addsig(int sig, void(handler)(int), bool restart = true);
     // 定时器处理任务，重新定时以不断触发SIGALRM信号
     void timer_handler();
+    // 向套接字connfd发送错误信息info，并断开connfd连接
     void show_error(int connfd, const char *info);
 
 public:
