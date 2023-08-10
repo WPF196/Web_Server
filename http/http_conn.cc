@@ -61,7 +61,7 @@ void addfd(int epollfd, int fd, bool one_shot, int TRIGMode)
     event.data.fd = fd;
 
     if(TRIGMode == 1)   // 边沿
-        event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;  // EPOLLRDHUP属性用于判断对端是否已经关闭
+        event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;  // EPOLLRDHUP：对方关闭写端
     else 
         event.events = EPOLLIN | EPOLLRDHUP;
     
@@ -198,8 +198,7 @@ bool http_conn::read_once()
 
     // 1. LT读取数据
     if(m_TRIGMode == 0){
-        bytes_read = recv(m_sockfd, m_read_buf + m_read_idx, 
-                        READ_BUFFER_SIZE - m_read_idx, 0);
+        bytes_read = recv(m_sockfd, m_read_buf + m_read_idx, READ_BUFFER_SIZE - m_read_idx, 0);
         m_read_idx += bytes_read;
 
         if(bytes_read <= 0)
@@ -210,8 +209,7 @@ bool http_conn::read_once()
     // 2. ET读取数据
     else{
         while(true){    // 边沿必须立马读取，因此在死循环中
-            bytes_read = recv(m_sockfd, m_read_buf + m_read_idx,
-                            READ_BUFFER_SIZE - m_read_idx, 0);
+            bytes_read = recv(m_sockfd, m_read_buf + m_read_idx, READ_BUFFER_SIZE - m_read_idx, 0);
             if(bytes_read == -1){
                 /* 写数据时，若一次发送的数据超过TCP发送缓冲区，
                 * 则返EAGAIN/EWOULDBLOCK，表示数据没用发送完，

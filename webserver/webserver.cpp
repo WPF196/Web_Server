@@ -362,7 +362,7 @@ void WebServer::eventLoop()
 
             // 处理新客户的连接
             if(sockfd == m_listenfd){
-                bool flag = dealclinetdata; // 数据是否成功处理
+                bool flag = dealclinetdata(); // 数据是否成功处理
                 if(flag = false)
                     continue;
             }

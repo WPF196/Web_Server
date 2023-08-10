@@ -20,25 +20,158 @@ template <class T>
 class block_queue
 {
 public:
-    block_queue(int max_size = 1000);   // 默认消息队列长为1000
-    ~block_queue();
+    block_queue(int max_size = 1000)   // 默认消息队列长为1000
+    {
+        if(max_size <= 0)
+        exit(-1);    
 
-    void clear();           // 清空
-    bool full();            // 判满
-    bool empty();           // 判空
-    bool front(T& value);   // 获取队首元素，存于value
-    bool back(T& value);    // 获取队尾元素，存于value
-    int size();             // 获取size 
-    int max_size();         // 获取max_size
-     
+        m_max_size = max_size;
+        m_array = new T[max_size];
+        m_size = 0;
+        m_front = -1;
+        m_back = -1; 
+    }
+    ~block_queue()
+    {
+        m_mutex.lock();
+        if(m_array != NULL)
+            delete [] m_array;
+        m_mutex.unlock();
+    }
+
+    void clear()           // 清空
+    {
+        m_mutex.lock();
+        m_size = 0;
+        m_front = -1;
+        m_back = -1;
+        m_mutex.unlock();
+    }
+    bool full()            // 判满
+    {
+        m_mutex.lock();
+        if(m_size >= m_max_size){
+            m_mutex.unlock();
+            return true;
+        }
+        m_mutex.unlock();
+        return false;
+    }
+    bool empty()           // 判空
+    {
+        m_mutex.lock();
+        if(m_size == 0){
+            m_mutex.unlock();
+            return true;
+        }
+        m_mutex.unlock();
+        return false;
+    }
+    bool front(T& value)   // 获取队首元素，存于value
+    {
+        m_mutex.lock();
+        if(m_size == 0){
+            m_mutex.unlock();
+            return false;
+        }
+        value = m_array[m_front];
+        m_mutex.unlock();
+        return true;
+    }
+    bool back(T& value)    // 获取队尾元素，存于value
+    {
+        m_mutex.lock();
+        if(m_size == 0){
+            m_mutex.unlock();
+            return false;
+        }
+        value = m_array[m_back];
+        m_mutex.unlock();
+        return true;
+    }
+    int size()             // 获取size 
+    {
+        int tmp = 0;
+        m_mutex.lock();     
+        tmp = m_size;
+        m_mutex.unlock();
+        return tmp;
+    }
+    int max_size()         // 获取max_size
+    {
+        int tmp = 0;
+        m_mutex.lock();
+        tmp = m_max_size;
+        m_mutex.unlock();
+        return tmp;
+    }
+
     /* 往队列添加元素，需要将所有使用队列的线程先唤醒
      * 当有元素push进队列,相当于生产者生产了一个元素
      * 若当前没有线程等待条件变量,则唤醒无意义 */
-    bool push(const T& item);  
+    bool push(const T& item)
+    {
+        m_mutex.lock();
+        if(m_size >= m_max_size){   // 超出队列最大容量
+            m_cond.broadcast();     // 唤醒所有使用队列的线程来消费
+            m_mutex.unlock();
+            return false;
+        }
+
+        m_back = (m_back + 1) % m_max_size;     //尾插
+        m_array[m_back] = item;
+
+        m_size++;
+
+        m_cond.broadcast();         // 有内容加入，告知消费者们去消费
+        m_mutex.unlock();
+        return true;
+    } 
     // pop时,如果当前队列没有元素,将会等待条件变量
-    bool pop(T& item);      // 弹出元素，并存于item
+    bool pop(T& item)      // 弹出元素，并存于item
+    {
+        m_mutex.lock();
+        while(m_size <= 0){
+            if(!m_cond.wait(m_mutex.get())){    // 如果条件变量阻塞，无法删除元素
+                m_mutex.unlock();
+                return false;
+            }
+        }
+
+        m_front = (m_front + 1) % m_max_size;   // 头出
+        item = m_array[m_front];
+        m_size--;
+        m_mutex.unlock();
+        return true;
+    }
     // 增加了超时处理（毫秒）
-    bool pop(T& item, int ms_timeout);  
+    bool pop(T& item, int ms_timeout)
+    {
+        struct timespec t = {0, 0};     // (秒，纳秒)
+        struct timeval now = {0, 0};    // (秒，微秒)
+        gettimeofday(&now, NULL);       // 获取当前时间，用tv结构返回给now
+        
+        m_mutex.lock();
+        if(m_size <= 0){                // 没有内容可消费
+            t.tv_sec = now.tv_sec + ms_timeout / 1000;  // 时延秒
+            t.tv_nsec = (ms_timeout % 1000) * 1000;     // 时延纳秒
+            if(!m_cond.timewait(m_mutex.get(), t)){       // 开启超时阻塞
+                m_mutex.unlock();
+                return false;
+            }
+        }
+
+        if(m_size <= 0){            // 队列已空
+            m_mutex.unlock();
+            return false;
+        }
+
+        m_front = (m_front + 1) % m_max_size;
+        item = m_array[m_front];
+        m_size--;
+        m_mutex.unlock();
+        return true;
+    } 
 
 private:
     locker m_mutex;
