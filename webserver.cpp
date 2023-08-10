@@ -337,3 +337,62 @@ void WebServer::dealwithwrite(int sockfd)
             deal_timer(timer, sockfd);
     }
 }
+
+void WebServer::eventLoop()
+{
+    bool timeout = false;
+    bool stop_server = false;
+
+    while(!stop_server){
+        int number = epoll_wait(m_epollfd, events, MAX_EVENT_NUMBER, -1);
+        /**
+         * EINTR错误的产生：当阻塞于某个慢系统调用的一个进程捕获某个信号且相应信号处理函数返回时，该系统调用可能返回一个EINTR错误。
+         * 例如：在socket服务器端，设置了信号捕获机制，有子进程，
+         * 当在父进程阻塞于慢系统调用时由父进程捕获到了一个有效信号时，内核会致使accept返回一个EINTR错误(被中断的系统调用)。
+         * 在epoll_wait时，因为设置了alarm定时触发警告，导致每次返回-1，errno为EINTR，对于这种错误返回
+         * 忽略这种错误，让epoll报错误号为4时，再次做一次epoll_wait
+        */ 
+        if(number < 0 && errno != EINTR){
+            LOG_ERROR("%s", "epoll failure");
+            break;
+        }
+
+        for(int i = 0; i < number; ++i){
+            int sockfd = events[i].data.fd;
+
+            // 处理新客户的连接
+            if(sockfd == m_listenfd){
+                bool flag = dealclinetdata; // 数据是否成功处理
+                if(flag = false)
+                    continue;
+            }
+            // 如果（客户端 &（读关闭 | 读写都关闭 | 系统错误） ）
+            else if(events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)){
+                // 服务器端关闭连接，移除对应的定时器
+                util_timer *timer = users_timer[sockfd].timer;
+                deal_timer(timer, sockfd);
+            }
+            // 处理信号（客户端读口 & 读事件）
+            else if((sockfd == m_pipefd[0]) && (events[i].events & EPOLLIN)){
+                bool flag = dealwithsignal(timeout, stop_server);   // 是否成功处理信号
+                if(flag == false)
+                    LOG_ERROR("%s", "dealclientdata failure");
+            }
+            // 处理客户连接上接收到的数据
+            else if(events[i].events & EPOLLIN)
+                dealwithread(sockfd);
+            else if(events[i].events & EPOLLOUT)
+                dealwithwrite(sockfd);
+        }
+
+        // 处理定时器为非必须事件，收到信号并不是立马处理
+        // 完成读写事件后，再进行处理
+        if(timeout){
+            utils.timer_handler();
+            
+            LOG_INFO("%s", "timer tick");
+
+            timeout = false;
+        }
+    }
+}

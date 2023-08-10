@@ -38,10 +38,10 @@ public:
     void timer(int connfd, struct sockaddr_in client_address);  // 创建一个定时器节点，将连接信息挂载
     void adjust_timer(util_timer *timer);   // 调整定时器在链表的位置
     void deal_timer(util_timer *timer, int sockfd); // 删除定时器节点，关闭连接
-    bool dealclinetdata();  // http 处理用户数据
+    bool dealclinetdata();  // http 处理用户数据（接收用户连接并分配相关定时器等）
     bool dealwithsignal(bool& timeout, bool& stop_server);  // 处理定时器信号
     void dealwithread(int sockfd);  // 处理客户连接上接收到的数据
-    void dealwithwrite(int sockfd);
+    void dealwithwrite(int sockfd); // 写操作
 
 public:
     // 基础          
