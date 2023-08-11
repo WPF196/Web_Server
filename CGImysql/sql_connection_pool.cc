@@ -123,7 +123,7 @@ connection_pool::~connection_pool()
 
 connectionRAII::connectionRAII(MYSQL** SQL, connection_pool* connPool)
 {
-    *SQL = connPool->GetConnection();
+    *SQL = connPool->GetConnection();  
 
     conRAII = *SQL;
     poolRAII = connPool;

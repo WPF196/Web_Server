@@ -52,12 +52,13 @@ threadpool<T>::threadpool( int actor_model, connection_pool *connPool, int threa
     if(!m_threads)
         throw std::exception();
     
-    // 创建指定个工作的线程
+    // 创建指定个工作的线程，去执行work函数
     for(int i = 0; i < thread_number; ++i){
         if(pthread_create(m_threads + i, NULL, worker, this) != 0){
             delete[] m_threads;
             throw std::exception();
         }
+        // 线程分离
         if(pthread_detach(m_threads[i])){
             delete[] m_threads;
             throw std::exception();
@@ -71,7 +72,7 @@ threadpool<T>::~threadpool()
     delete[] m_threads;
 }
 
-// reactor模式下的请求入队
+// reactor模式下的请求入队（需要指明任务的状态（读|写））
 template <typename T>
 bool threadpool<T>::append(T *request, int state)
 {
@@ -87,7 +88,7 @@ bool threadpool<T>::append(T *request, int state)
     return true;
 }
 
-// proactor模式下的请求入队
+// proactor模式下的请求入队（不用指明任务状态，主线程直接处理）
 template <typename T>
 bool threadpool<T>::append_p(T *request)
 {
@@ -132,13 +133,13 @@ void threadpool<T>::run()
             // 从客户端读
             if(request->m_state == 0){
                 if(request->read_once()){
-                    request->improv = 1;
+                    request->improv = 1;    // 读完
                     connectionRAII mysqlcon(&request->mysql, m_connPool);
-                    request->process();
+                    request->process();     // 读完后直接响应
                 }
                 else{
                     request->improv = 1;
-                    request->timer_flag = 1;
+                    request->timer_flag = 1;    // 出错
                 }
             }
             // 写给客户端
@@ -151,8 +152,8 @@ void threadpool<T>::run()
                 }
             }
         }
-        // Proactor，线程池不需要进行数据读取，而是直接开始业务处理
-        // 之前的操作已经将数据读取到http的read和write的buffer中了
+        // Proactor，线程池不需要进行数据读取（因为主线程已经读完了，子线程只处理响应）
+        // 而是直接开始业务处理
         else{
             connectionRAII mysqlcon(&request->mysql, m_connPool);
             request->process();

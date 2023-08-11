@@ -49,16 +49,18 @@ public:
 };
 
 // 将数据库连接的获取与释放通过RAII机制封装，避免手动释放。
+// RAII：构造时初始化，析构时释放
 class connectionRAII
 {
 public:
     // 双指针对MYSQL *con修改
+    // 在数据库连接池connPool中获取一个数据库连接(MYSQL*)，用con指向它
     connectionRAII(MYSQL** con, connection_pool* connPool);
     ~connectionRAII();
 
 private:
-    MYSQL* conRAII;
-    connection_pool* poolRAII;
+    MYSQL* conRAII;             // 指向从数据库连接池中获取的连接
+    connection_pool* poolRAII;  // 数据库连接池
 };
 
 #endif

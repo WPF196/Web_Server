@@ -69,17 +69,19 @@ public:
                 int, string user, string passwd, string sqlname);
     void close_conn(bool real_close = true);    // 关闭http连接
     void process();     // 调用process_read和process_write函数，分别完成报文解析与响应
-    bool read_once();   // 读取浏览器端发来的全部数据
+    bool read_once();   // 读取浏览器端发来的全部数据，存到 m_read_buf
     bool write();       // 响应报文写入函数
     sockaddr_in *get_address(){ return &m_address; }
-    void initmysql_result(connection_pool *connPool);  // 同步线程初始化数据库读取表
+    void initmysql_result(connection_pool *connPool);  // 获取数据库连接，同时获取用户信息
     int timer_flag;     // read操作是否出现问题：1是，0否
     int improv;         // read操作是否完成：1是，0否
 
 private:
     void init();
-    HTTP_CODE process_read();                 // 从m_read_buf读取，并处理请求报文
-    bool process_write(HTTP_CODE ret);        // 向m_write_buf写入响应报文数据
+    
+    HTTP_CODE process_read();                 // 从 m_read_buf 读取，并处理请求报文
+    bool process_write(HTTP_CODE ret);        // 生成响应报文，并写入 m_write_buf 
+    
     HTTP_CODE parse_request_line(char *test); // 解析报文中的请求行数据（返回主状态机）
     HTTP_CODE parse_headers(char *test);      // 解析报文中的请求头数据（返回主状态机）
     HTTP_CODE parse_content(char *test);      // 解析报文中的请求内容（返回主状态机）

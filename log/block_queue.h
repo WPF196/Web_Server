@@ -120,7 +120,6 @@ public:
 
         m_back = (m_back + 1) % m_max_size;     //尾插
         m_array[m_back] = item;
-
         m_size++;
 
         m_cond.broadcast();         // 有内容加入，告知消费者们去消费
@@ -131,8 +130,16 @@ public:
     bool pop(T& item)      // 弹出元素，并存于item
     {
         m_mutex.lock();
+        
+        // 当队列中没有元素可供消费时，需要等待生产者线程将元素放入队列
+        // 使用 while 循环而不是 if，以防止虚假唤醒（spurious wake-up）
+        // 虚假唤醒：当唤醒多个卡住的生产者，可能导致a要用的资源已经被b拿走了
+        // 如果使用while，被唤醒的生产者会循环回来进行校验，a会重新进入等待态
         while(m_size <= 0){
-            if(!m_cond.wait(m_mutex.get())){    // 如果条件变量阻塞，无法删除元素
+            // 当前线程等待条件变量，自动释放互斥锁(m_mutex.unlock()) 并进入阻塞状态，此时生产者可以调用互斥锁
+            // 在被唤醒之前，其他线程必须调用 pthread_cond_signal 或 pthread_cond_broadcast
+            // 来通知有数据可供消费，唤醒等待的消费者线程
+            if(!m_cond.wait(m_mutex.get())){    // wait错误
                 m_mutex.unlock();
                 return false;
             }

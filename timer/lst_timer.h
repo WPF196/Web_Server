@@ -80,6 +80,7 @@ public:
     Utils() {}
     ~Utils() {}
 
+    // 初始化Utils，传入超时单位
     void init(int timeslot);
     // 将文件描述符设为非阻塞
     int setnonblocking(int fd);

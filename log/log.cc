@@ -10,7 +10,7 @@ using namespace std;
 
 Log::Log()
 {
-    m_count = 0;
+    m_count = 0;            // 从第0行开始写
     m_is_async = false;     // 默认同步
 }
 

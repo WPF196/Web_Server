@@ -16,19 +16,21 @@ class Log
 public:
     // C++11以后，使用局部变量懒汉不用加锁
     static Log* get_instance();
-    // 创建线程异步写日志时的回调函数
+    // 创建线程异步写日志时的回调函数（静态方法调用类内async_write_log函数）
     static void* flush_log_thread(void *args);
+
     // 可选择的参数有日志文件名、日志关闭标记、日志缓冲区大小、最大行数以及最长日志条队列
     bool init(const char* file_name, int close_log, int log_buf_size = 8192, 
             int split_lines = 5000000, int max_queue_size = 0);
     
+    // 通过实例调用，直接写
     void write_log(int level, const char* format, ...);
     void flush(void);           // 强制刷新写入流缓冲区
 
 private:
     Log();
     virtual ~Log();
-    void *async_write_log();    // 从队列中取出任务异步写日志
+    void *async_write_log();    // 循环 从等待队列中取出任务写日志
 
     char dir_name[128];     // 路径名
     char log_name[128];     // log文件名
@@ -36,9 +38,9 @@ private:
     int m_log_buf_size;     // 日志缓冲区大小
     long long m_count;      // 日志行数记录
     int m_today;            // 当前是哪一天（日志按天分类）
-    FILE* m_fp;             // 打开log的文件指针
+    FILE* m_fp;             // 打开log的文件指针（某时刻只开一个文件）
     char* m_buf;
-    block_queue<string>* m_log_queue;   // 阻塞队列
+    block_queue<string>* m_log_queue;   // 阻塞队列，存放待写的日志，实现异步
     bool m_is_async;        // 是否异步标志位
     locker m_mutex;         // 互斥锁
     int m_close_log;        // 关闭日志

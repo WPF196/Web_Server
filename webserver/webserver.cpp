@@ -6,11 +6,10 @@ WebServer::WebServer()
     // http_conn类对象
     users = new http_conn[MAX_FD];
 
-    // root文件夹路径
+    // 获取root路径 m_root
     char server_path[200];
     getcwd(server_path, 200);   // 将当前工作目录的绝对路径复制到server_path
     char root[6] = "/root";
-    
     m_root = (char *)malloc(strlen(server_path) + strlen(root) + 1);
     strcpy(m_root, server_path);
     strcat(m_root, root);
@@ -75,9 +74,9 @@ void WebServer::log_write()
     // 不关闭日志
     if(m_close_log == 0){
         // 初始化日志
-        if (1 == m_log_write)
+        if (1 == m_log_write)   // 异步写  缓冲区大小2000 最大行数800000 等待队列800
             Log::get_instance()->init("./ServerLog", m_close_log, 2000, 800000, 800);
-        else
+        else    // 同步写
             Log::get_instance()->init("./ServerLog", m_close_log, 2000, 800000, 0);
     }
 }

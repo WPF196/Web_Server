@@ -11,7 +11,7 @@ public:
     Config();
     ~Config(){};
 
-    // 解析命令行参数
+    // 解析命令行参数（可选项）
     void parse_arg(int argc, char *argv[]);
 
     int PORT;               // 端口号
