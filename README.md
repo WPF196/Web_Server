@@ -7,11 +7,9 @@ linux下c++轻量级Web服务器
 * 经Webbench压力测试可以实现**上万的并发连接**数据交换
 
 
-----------
-项目参考\
-Linux高性能服务器编程，游双著.
+## 项目框架
+![框架](./root/frame.jpg)
 
----------
 快速运行
 ------------
 * 服务器测试环境
@@ -114,3 +112,8 @@ Linux高性能服务器编程，游双著.
 - [x] 线程池内有10条线程
 - [x] 关闭日志
 - [x] Reactor反应堆模型
+
+
+----------
+#### 项目参考
+[TinyWebServer](https://github.com/qinguoyi/TinyWebServer)
