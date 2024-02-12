@@ -42,7 +42,7 @@ void connection_pool::init(string url, string User, string PassWord,
             LOG_ERROR("MySQL Error");
             exit(1);
         }
-        // 打开一个到 MySQL 服务器的新连接
+
         con = mysql_real_connect(con, url.c_str(), User.c_str(), 
                                 PassWord.c_str(), DBName.c_str(), Port, NULL, 0);
 
@@ -50,7 +50,7 @@ void connection_pool::init(string url, string User, string PassWord,
             LOG_ERROR("MYSQL Error");
             exit(1);
         }
-        // 将新的可用连接放入连接池
+
         connList.push_back(con);
         ++m_FreeConn;
     }
@@ -59,14 +59,13 @@ void connection_pool::init(string url, string User, string PassWord,
     m_MaxConn = m_FreeConn;
 }
 
-//当有请求时，从数据库连接池中返回一个可用连接，更新使用和空闲连接数
 MYSQL* connection_pool::GetConnection()
 {
     MYSQL* con = NULL;
     if(connList.size() == 0)
         return NULL;
     
-    reserve.wait();      // 条件变量阻塞，等待有可用的数据库连接
+    reserve.wait();
 
     lock.lock();
     con = connList.front();
@@ -78,7 +77,6 @@ MYSQL* connection_pool::GetConnection()
     return con;
 }
 
-// 释放当前使用的连接
 bool connection_pool::ReleaseConnection(MYSQL* con)
 {
     if(con == NULL)
@@ -94,7 +92,6 @@ bool connection_pool::ReleaseConnection(MYSQL* con)
     return true;
 }
 
-// 销毁数据库连接池
 void connection_pool::DestoryPool()
 {
     lock.lock();
