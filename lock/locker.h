@@ -5,7 +5,6 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-// 信号量类
 class sem
 {
 public:
@@ -24,11 +23,11 @@ public:
         sem_destroy(&m_sem);
     }
 
-    bool wait()    // 信号量-1
+    bool wait()
     {
         return sem_wait(&m_sem) == 0; 
     }
-    bool post()    // 信号量+1
+    bool post()
     {
         return sem_post(&m_sem) == 0;
     }
@@ -37,7 +36,6 @@ private:
 };
 
 
-// 互斥锁类
 class locker
 {
 public:
@@ -59,7 +57,7 @@ public:
     {
         return pthread_mutex_unlock(&m_mutex) == 0;
     }
-    pthread_mutex_t *get()  // 获取互斥锁变量的地址，从而操作锁本体
+    pthread_mutex_t *get()
     {
         return &m_mutex;
     }
@@ -69,7 +67,6 @@ private:
 };
 
 
-// 条件变量类（常与互斥量一起使用）
 class cond
 {
 public:
