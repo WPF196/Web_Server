@@ -9,7 +9,7 @@ else
 endif
 
 server: main.cpp  ./timer/lst_timer.cc ./http/http_conn.cc ./log/log.cc ./CGImysql/sql_connection_pool.cc  ./webserver/webserver.cpp ./config/config.cpp
-	$(CXX) -o server  $^ $(CXXFLAGS) -lpthread -lmysqlclient
+	$(CXX) -o server.exe  $^ $(CXXFLAGS) -lpthread -lmysqlclient
 
 clean:
 	rm  -r server

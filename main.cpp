@@ -4,7 +4,7 @@ int main(int argc, char *argv[])
 {
     // 需要用户修改的数据库信息：登录名，密码，库名
     string user = "root";
-    string passwd = "root";
+    string passwd = "1962978635";
     string databasename = "webserver";
 
     // 命令行解析

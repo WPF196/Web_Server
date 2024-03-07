@@ -1,12 +1,9 @@
 #include "webserver.h"
 
-// 主要完成服务器初始化：http连接、设置根目录、开启定时器对象
 WebServer::WebServer()
 {
-    // http_conn类对象
     users = new http_conn[MAX_FD];
 
-    // 获取root路径 m_root
     char server_path[200];
     getcwd(server_path, 200);   // 将当前工作目录的绝对路径复制到server_path
     char root[6] = "/root";
@@ -14,7 +11,6 @@ WebServer::WebServer()
     strcpy(m_root, server_path);
     strcat(m_root, root);
 
-    // 定时器
     users_timer = new client_data[MAX_FD];
 }
 
@@ -63,6 +59,7 @@ void WebServer::trig_mode()
         m_LISTENTrigmode = 1;
         m_CONNTringmode = 0;
     }
+    // ET + ET
     else if(m_TRIGMode == 3){
         m_LISTENTrigmode = 1;
         m_CONNTringmode = 1;
@@ -71,9 +68,7 @@ void WebServer::trig_mode()
 
 void WebServer::log_write()
 {
-    // 不关闭日志
     if(m_close_log == 0){
-        // 初始化日志
         if (1 == m_log_write)   // 异步写  缓冲区大小2000 最大行数800000 等待队列800
             Log::get_instance()->init("./ServerLog", m_close_log, 2000, 800000, 800);
         else    // 同步写
@@ -83,11 +78,10 @@ void WebServer::log_write()
 
 void WebServer::sql_pool()
 {
-    // 初始化数据库连接池
     m_connPool = connection_pool::GetInstance();
     m_connPool->init("localhost", m_user, m_passWord, m_databaseName, 3306, m_sql_num, m_close_log);
 
-    // 初始化数据库读取表
+    // 读数据库
     users->initmysql_result(m_connPool);
 }
 
@@ -99,11 +93,10 @@ void WebServer::thread_pool()
 
 void WebServer::eventListen()
 {
-    // 网络编程基础步骤
     m_listenfd = socket(PF_INET, SOCK_STREAM, 0);
     assert(m_listenfd >= 0);
 
-    // 优雅关闭连接
+    // 优雅关闭连接，断开连接后读完缓冲区，而不丢弃残留数据
     if(m_OPT_LINGER == 0){
         struct linger tmp = {0, 1}; // l_onoff=0, l_linger!=0，默认close
         setsockopt(m_listenfd, SOL_SOCKET, SO_LINGER, &tmp, sizeof(tmp));
@@ -138,7 +131,7 @@ void WebServer::eventListen()
     utils.addfd(m_epollfd, m_listenfd, false, m_LISTENTrigmode);
     http_conn::m_epollfd = m_epollfd;
 
-    // 设置全双工套接字组（协议族，协议，类型(只能为0)，套接字柄对）
+    // 设置全双工套接字组
     ret = socketpair(PF_UNIX, SOCK_STREAM, 0, m_pipefd);
     assert(ret != -1);
     utils.setnonblocking(m_pipefd[1]);

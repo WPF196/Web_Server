@@ -122,7 +122,7 @@ public:
         return true;
     } 
 
-    bool pop(T& item)      // 弹出元素存于item
+    bool pop(T& item)      // 弹出首元素，并将下一个元素存入item
     {
         m_mutex.lock();
         

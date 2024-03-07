@@ -14,28 +14,19 @@ const char *error_404_form = "The requested file was not found on this server.\n
 const char *error_500_title = "Internal Error";
 const char *error_500_form = "There was an unusual problem serving the request file.\n";
 
-locker m_lock;                  // 互斥锁
-map<string, string> users;      // <用户名，密码>
+locker m_lock;
+map<string, string> users;      // <name，password>
 
 void http_conn::initmysql_result(connection_pool *connPool)
 {
-    // 先从连接池中取一个连接
     MYSQL *mysql = NULL;
     connectionRAII mysqlcon(&mysql, connPool);
 
-    // 在user表中检索username，passwd数据，浏览器端输入
     if (mysql_query(mysql, "SELECT username,passwd FROM user")){
         LOG_ERROR("SELECT error:%s\n", mysql_error(mysql));
     }
 
-    // 从表中检索完整的结果集
     MYSQL_RES *result = mysql_store_result(mysql);
-
-    // 返回结果集中的列数
-    int num_fields = mysql_num_fields(result);
-
-    // 返回所有字段结构的数组
-    MYSQL_FIELD *fields = mysql_fetch_fields(result);
 
     // 从结果集中取出所有结果，将对应的用户名和密码，存入map中
     while(MYSQL_ROW row = mysql_fetch_row(result)){
@@ -46,39 +37,39 @@ void http_conn::initmysql_result(connection_pool *connPool)
 }
 
 // 对文件描述符设置非阻塞
+// 当无数据可读 || 不能立即写入，直接返回错误而不是阻塞等待
 int setnonblocking(int fd)
 {
-    int old_option = fcntl(fd, F_GETFL);    // 获取fd的文件标记
-    int new_option = old_option | O_NONBLOCK;   // 标记指定为非阻塞
-    fcntl(fd, F_SETFL, new_option);         // 设置fd的文件标记
+    int old_option = fcntl(fd, F_GETFL);
+    int new_option = old_option | O_NONBLOCK; 
+    fcntl(fd, F_SETFL, new_option); 
     return old_option;
 }
 
-// 将内核事件表注册读事件（选择开启EPOLLONESHOT（防止多线程处理一个文件描述符））
+// 注册 fd 到 epollfd
 void addfd(int epollfd, int fd, bool one_shot, int TRIGMode)
 {
     epoll_event event;
     event.data.fd = fd;
 
-    if(TRIGMode == 1)   // 边沿
-        event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;  // EPOLLRDHUP：对方关闭写端
+    if(TRIGMode == 1)   // ET
+        event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;  // EPOLLRDHUP：高校检测对方是否关闭连接
     else 
         event.events = EPOLLIN | EPOLLRDHUP;
     
-    if(one_shot)        // 如果开启EPOLLONESHOT
+    if(one_shot)
         event.events |= EPOLLONESHOT;
-    epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);      // 注册fd到epoll树
-    setnonblocking(fd); // 设为非阻塞
+    epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
+    setnonblocking(fd); 
 }
 
-// 从内核时间表删除描述符
 void removefd(int epollfd, int fd)
 {
     epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, 0);
     close(fd);
 }
 
-// 将事件重置为EPOLLONESHOT（ev 事件类型）
+// 修改 fd 事件类型
 void modfd(int epollfd, int fd, int ev, int TRIGMode)
 {
     epoll_event event;
@@ -95,7 +86,7 @@ void modfd(int epollfd, int fd, int ev, int TRIGMode)
 int http_conn::m_user_count = 0;
 int http_conn::m_epollfd = -1;
 
-// 关闭连接（关闭一个连接，客户总量减一）
+// 关闭一个连接
 void http_conn::close_conn(bool real_close)
 {
     if(real_close && (m_sockfd != -1)){
@@ -113,11 +104,9 @@ void http_conn::init(int sockfd, const sockaddr_in &addr, char *root, int TRIGMo
     m_sockfd = sockfd;
     m_address = addr;
 
-    // 将文件描述符加入epoll树
     addfd(m_epollfd, sockfd, true, m_TRIGMode);
     m_user_count++;
 
-    // 当浏览器出现连接重置时，可能是网站根目录出错或http响应格式出错或者访问的文件中内容完全为空
     doc_root = root;
     m_TRIGMode = TRIGMode;
     m_close_log = close_log;
@@ -136,7 +125,7 @@ void http_conn::init()
     mysql = NULL;
     bytes_to_send = 0;
     bytes_have_send = 0;
-    m_check_state = CHECK_STATE_REQUESTLINE;
+    m_check_state = CHECK_STATE_REQUESTLINE;    // 解析行
     m_linger = false;
     m_method = GET;
     m_url = 0;
@@ -164,9 +153,9 @@ http_conn::LINE_STATUS http_conn::parse_line()
     for(; m_checked_idx < m_read_idx; ++m_checked_idx){
         temp = m_read_buf[m_checked_idx];
         if(temp == '\r'){   // 回车    
-            if((m_checked_idx + 1) == m_read_idx)   // 非完整一行
+            if((m_checked_idx + 1) == m_read_idx) 
                 return LINE_OPEN;
-            else if(m_read_buf[m_checked_idx + 1] == '\n'){     // 读取了完整的一行
+            else if(m_read_buf[m_checked_idx + 1] == '\n'){  
                 // 将末尾的回车换行都用'\0'都替
                 m_read_buf[m_checked_idx++] = '\0'; 
                 m_read_buf[m_checked_idx++] = '\0';
@@ -187,8 +176,6 @@ http_conn::LINE_STATUS http_conn::parse_line()
     return LINE_OPEN;
 }
 
-// 循环读取客户数据，直到无数据可读或对方关闭连接
-// 非阻塞ET工作模式下，需要一次性读完数据
 bool http_conn::read_once()
 {   
     // 空间溢出
@@ -208,7 +195,7 @@ bool http_conn::read_once()
     }
     // 2. ET读取数据
     else{
-        while(true){    // 边沿必须立马读取，因此在死循环中
+        while(true){    // 一次性读完
             bytes_read = recv(m_sockfd, m_read_buf + m_read_idx, READ_BUFFER_SIZE - m_read_idx, 0);
             if(bytes_read == -1){
                 /* 写数据时，若一次发送的数据超过TCP发送缓冲区，
@@ -230,8 +217,8 @@ bool http_conn::read_once()
 // 解析http请求行，获得请求方法，目标url及http版本号 （报文格式看readme）
 http_conn::HTTP_CODE http_conn::parse_request_line(char *text)
 {
-    // 返回text中第一个和字符串" \t"有相同字符匹配的地方
-    m_url = strpbrk(text, " \t");   // 返回除HTTP协议版本之后的部分
+    // 在第一个空格处匹配，如 GET /abcd.jpg HTTP/1.1
+    m_url = strpbrk(text, " \t");   // 返回 "/abcd.jpg HTTP/1.1"
     if(!m_url)
         return BAD_REQUEST;
     

@@ -47,17 +47,16 @@ public:
     int m_close_log;
 };
 
-// 将数据库连接的获取与释放通过RAII机制封装，避免手动释放。
+// 将 数据库连接（池中资源） 的获取与释放通过RAII机制封装，避免手动释放。
 // RAII：构造时初始化，析构时释放
 class connectionRAII
 {
 public:
-    // *con指向数据库连接池connPool的地址
     connectionRAII(MYSQL** con, connection_pool* connPool);
     ~connectionRAII();
 
 private:
-    MYSQL* conRAII;             // 指向从数据库连接池中获取的连接
+    MYSQL* conRAII;             // 从数据库连接池中获取的连接
     connection_pool* poolRAII;  // 数据库连接池
 };
 

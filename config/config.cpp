@@ -11,7 +11,7 @@ Config::Config()
     sql_num = 8;
     thread_num = 8;
     close_log = 0;      // 不关闭日志
-    actor_model = 0;    // poractor
+    actor_model = 0;    // proactor
 }
 
 void Config::parse_arg(int argc, char*argv[]){

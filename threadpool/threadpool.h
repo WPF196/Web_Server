@@ -13,24 +13,22 @@ template <typename T>
 class threadpool
 {
 public:
-    /*thread_number是线程池中线程的数量，
-      max_requests是请求队列中最多允许的、等待处理的请求的数量*/
     threadpool(int actor_model, connection_pool* connPool, 
                 int thread_number = 8, int max_request = 10000);
     ~threadpool();
-    bool append(T* request, int state);  // 请求队列中插入任务请求(http_conn)
+    bool append(T* request, int state);
     bool append_p(T* request);
 
 private:
-    /* 工作线程运行的函数，它不断从工作队列中取出任务并执行之 */
+    /* 工作线程运行的函数，循环获取工作队列中的任务并执行之 */
     static void *worker(void* arg);
     void run();
 
 private:
-    int m_thread_number;            // 线程池中的线程数量
+    int m_thread_number;
     int m_max_requests;             // 请求队列中允许的最大请求数
 
-    pthread_t* m_threads;           // 描述线程池的数组，其大小为 m_thread_number
+    pthread_t* m_threads;           // 线程池数组
     std::list<T*> m_workqueue;      // 请求队列
     
     locker m_queuelocker;           // 保护请求队列的互斥锁
@@ -47,18 +45,16 @@ threadpool<T>::threadpool( int actor_model, connection_pool *connPool, int threa
     if(thread_number <= 0 || max_requests <= 0)
         throw std::exception();
     
-    // 创建线程数组，用于存储指定数量的线程
     m_threads = new pthread_t[m_thread_number];
     if(!m_threads)
         throw std::exception();
     
-    // 创建指定个工作的线程，去执行work函数
     for(int i = 0; i < thread_number; ++i){
         if(pthread_create(m_threads + i, NULL, worker, this) != 0){
             delete[] m_threads;
             throw std::exception();
         }
-        // 线程分离
+        // 线程分离，使得子线程和主线程互不干涉
         if(pthread_detach(m_threads[i])){
             delete[] m_threads;
             throw std::exception();
@@ -77,14 +73,14 @@ template <typename T>
 bool threadpool<T>::append(T *request, int state)
 {
     m_queuelocker.lock();
-    if(m_workqueue.size() >= m_max_requests){   // 溢出
+    if(m_workqueue.size() >= m_max_requests){
         m_queuelocker.unlock();
         return false;
     }
     request->m_state = state;   // http_conn状态，0读 1写
     m_workqueue.push_back(request);
     m_queuelocker.unlock();
-    m_queuestat.post();         // 待处理任务信号量+1
+    m_queuestat.post();
     return true;
 }
 
@@ -115,7 +111,7 @@ template <typename T>
 void threadpool<T>::run()
 {
     while(true){
-        m_queuestat.wait();     // 等待任务
+        m_queuestat.wait();
         m_queuelocker.lock();   
         if(m_workqueue.empty()){
             m_queuelocker.unlock();

@@ -44,31 +44,26 @@ public:
     void dealwithread(int sockfd);  // 处理客户连接上接收到的数据
     void dealwithwrite(int sockfd); // 写操作
 
-public:
-    // 基础          
+public:        
     int m_port;         // 端口
     char *m_root;       // 当前文件根目录
     int m_log_write;    // 日志类型（同步/异步）
     int m_close_log;    // 是否关闭日志
     int m_actormodel;   // Reactor 1 / Proactor 0
     
-    // 网络信息
     int m_pipefd[2];    // 存相互连接的套接字
     int m_epollfd;      // epoll对象
     http_conn *users;   // http连接组
 
-    // 数据库相关
     connection_pool *m_connPool;
     string m_user;          // 数据库用户名
     string m_passWord;      // 数据库密码
     string m_databaseName;  // 数据库名
     int m_sql_num;          // 数据库连接池数量
 
-    // 线程池相关
     threadpool<http_conn> *m_pool;
     int m_thread_num;
 
-    // epoll_event相关
     epoll_event events[MAX_EVENT_NUMBER];
 
     int m_listenfd;         // 监听套接字
@@ -77,9 +72,7 @@ public:
     int m_LISTENTrigmode;   // 监听模式 LT/ET
     int m_CONNTringmode;    // 连接模式 ET/LT
 
-    // 定时器相关（数组）
     client_data *users_timer;
-    // 工具类
     Utils utils;
 };
 

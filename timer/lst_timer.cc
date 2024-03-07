@@ -10,7 +10,7 @@ sort_timer_lst::sort_timer_lst()
 sort_timer_lst::~sort_timer_lst()
 {
     util_timer *tmp = head;
-    // 循环清空链表
+    
     while(tmp){
         head = tmp->next;
         delete tmp;
@@ -26,14 +26,13 @@ void sort_timer_lst::add_timer(util_timer *timer)
         return;
     }
 
-    // 当前节点超时时长小于头节点超时时长，头插
     if(timer->expire < head->expire){
         timer->next = head;
         head->prev = timer;
         head = timer;
         return;
     }
-    // 否则调用私有成员，调整内部结点
+
     add_timer(timer, head);
 }
 
@@ -41,18 +40,15 @@ void sort_timer_lst::adjust_timer(util_timer *timer)
 {
     if(!timer)  return;
     
-    // 被调整的定时器在链表尾部 || 定时器超时值仍然小于下一个定时器超时值
     if(!timer->next || (timer->expire < timer->next->expire))
         return;
 
-    // 被调整定时器是链表头结点，将定时器取出，重新插入
     if(timer == head){
         head = head->next;
         head->prev = NULL;
         timer->next = NULL;
         add_timer(timer, head);
     }
-    // 被调整定时器在内部，将定时器取出，重新插入
     else{
         timer->prev->next = timer->next;
         timer->next->prev = timer->prev;
@@ -63,7 +59,6 @@ void sort_timer_lst::adjust_timer(util_timer *timer)
 void sort_timer_lst::del_timer(util_timer *timer)
 {
     if(!timer)  return;
-    // 只有timer一个节点
     if((timer == head) && (timer == tail)){
         delete timer;
         head = NULL;
@@ -98,9 +93,8 @@ void sort_timer_lst::tick()
         if(cur < tmp->expire)
             break;
         
-        // 以下处理超出超时时长的情况
-        tmp->cb_func(tmp->user_data);   // 调用回调函数，将超时的文件描述符移除
-        head = tmp->next;               // 处理过的定时器从链表中移除，并更新表头
+        tmp->cb_func(tmp->user_data);   
+        head = tmp->next;            
         
         if(head)
             head->prev = NULL;
@@ -112,9 +106,8 @@ void sort_timer_lst::tick()
 void sort_timer_lst::add_timer(util_timer *timer, util_timer *lst_head)
 {
     util_timer *prev = lst_head;
-    util_timer *tmp = prev->next;   // 从头节点的下一个节点开始查
+    util_timer *tmp = prev->next;
 
-    // 遍历当前结点之后的链表，按照超时时间找到目标定时器对应的位置，常规双向链表插入操作
     while(tmp){
         if(timer->expire < tmp->expire){
             prev->next = timer;
@@ -127,7 +120,6 @@ void sort_timer_lst::add_timer(util_timer *timer, util_timer *lst_head)
         tmp = tmp->next;
     }
 
-    // 遍历完，目标定时器需要放到尾结点处
     if(!tmp){
         prev->next = timer;
         timer->prev = prev;
@@ -169,7 +161,7 @@ void Utils::addfd(int epollfd, int fd, bool one_shot, int TRIGMode)
 void Utils::sig_handler(int sig)
 {
     // 为保证函数的可重入性，保留原来的errno
-    int save_error = errno;  // 系统变量，存储就近发生的错误，即下一次的错误码会覆盖掉上一次的错误
+    int save_error = errno;  // errno: 存储最新的错误
     int msg = sig;
     send(u_pipefd[1], (char *)msg, 1, 0);
     errno = save_error;
@@ -177,7 +169,6 @@ void Utils::sig_handler(int sig)
 
 void Utils::addsig(int sig, void(handler)(int), bool restart)
 {
-    // 创建sigaction结构体变量
     struct sigaction sa;
     memset(&sa, '\0', sizeof sa);
 
@@ -188,7 +179,6 @@ void Utils::addsig(int sig, void(handler)(int), bool restart)
     
     // 将所有信号添加到信号集中
     sigfillset(&sa.sa_mask);
-    // 执行sigaction函数
     assert(sigaction(sig, &sa, NULL) != -1);
 }
 
@@ -213,7 +203,6 @@ void cb_func(client_data *user_data)
     // 删除非活动连接在socket上的注册事件
     epoll_ctl(Utils::u_epollfd, EPOLL_CTL_DEL, user_data->sockfd, 0);
     assert(user_data);
-    // 删除非活动连接在socket上的注册事件
     close(user_data->sockfd);
     http_conn::m_user_count--;  // 减少连接数
 }

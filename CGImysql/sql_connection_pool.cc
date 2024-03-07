@@ -33,7 +33,6 @@ void connection_pool::init(string url, string User, string PassWord,
     m_DatabaseName = DBName;
     m_close_log = close_log;
 
-    // 预先在数据库连接池创建MaxConn个连接
     for(int i = 0; i < MaxConn; ++i){
         MYSQL* con = NULL;
         con = mysql_init(con);

@@ -35,7 +35,8 @@ public:
     static const int WRITE_BUFFER_SIZE = 1024;
     //报文的请求方法，本项目只用到GET和POST
     enum METHOD{ GET = 0, POST, HEAD, PUT, DELETE, TRACE, OPTIONS, CONNECT, PATH };
-    // 报文解析的结果
+    
+    // 报文解析结果
     enum HTTP_CODE{
         NO_REQUEST,             // 请求不完整，需要继续读取请求报文数据（跳转主线程继续监测读事件）
         GET_REQUEST,            // 获取了完整的HTTP请求（调用do_request完成请求资源映射）
@@ -44,7 +45,7 @@ public:
         FORBIDDEN_REQUEST,      // 请求资源禁止访问，没有读取权限（跳转process_write完成响应报文）
         FILE_REQUEST,           // 请求资源可以正常访问（跳转process_write完成响应报文）
         INTERNAL_ERROR,         // 服务器内部错误
-        CLOSED_CONNECTION
+        CLOSED_CONNECTION       // 关闭连接
     };
     // 主状态机的状态（CHECK）
     enum CHECK_STATE{
@@ -67,14 +68,14 @@ public:
     // 初始化套接字地址，函数内部会调用私有方法init
     void init(int sockfd, const sockaddr_in &addr, char*, int, 
                 int, string user, string passwd, string sqlname);
-    void close_conn(bool real_close = true);    // 关闭http连接
-    void process();     // 调用process_read和process_write函数，分别完成报文解析与响应
-    bool read_once();   // 读取浏览器端发来的全部数据，存到 m_read_buf
+    void close_conn(bool real_close = true);
+    void process();     // 解析与响应报文
+    bool read_once();   // 读取数据
     bool write();       // 响应报文写入函数
     sockaddr_in *get_address(){ return &m_address; }
     void initmysql_result(connection_pool *connPool);  // 获取数据库连接，同时获取用户信息
-    int timer_flag;     // read操作是否出现问题：1是，0否
-    int improv;         // read操作是否完成：1是，0否
+    int timer_flag;     // read是否超时：1是，0否
+    int improv;         // read是否完成：1是，0否
 
 private:
     void init();
@@ -89,7 +90,7 @@ private:
 
     // 用于将指针向后偏移，指向未处理的字符
     char *get_line() { return m_read_buf + m_start_line; }
-    LINE_STATUS parse_line();   // 返回值为行的读取状态（从状态机）
+    LINE_STATUS parse_line();   // 返回行的读取状态（从状态机）
     void unmap();       // 解除m_file_address的映射关系
 
     // 根据响应报文格式，生成对应8个部分，以下函数均由do_request调用
