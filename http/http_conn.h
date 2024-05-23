@@ -74,8 +74,8 @@ public:
     bool write();       // 响应报文写入函数
     sockaddr_in *get_address(){ return &m_address; }
     void initmysql_result(connection_pool *connPool);  // 获取数据库连接，同时获取用户信息
-    int timer_flag;     // read是否超时：1是，0否
-    int improv;         // read是否完成：1是，0否
+    int timer_flag;     // 读写是否超时：1是，0否
+    int improv;         // 读写是否完成：1是，0否
 
 private:
     void init();
